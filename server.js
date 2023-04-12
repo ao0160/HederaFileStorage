@@ -1,5 +1,3 @@
-// Adding a comment here real quick.
-// Another line.
 const {
   Client,
   PrivateKey,
