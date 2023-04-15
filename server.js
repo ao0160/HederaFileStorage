@@ -71,7 +71,7 @@ app.get("/", function (req, res){
 
 });
 
-// This is always fallen into. However, the render is not handled.
+// Fall into 404.
 app.get("/*", function (req, res){
   console.log("[LOG] GET /*.");
   // Currently unsupported pages are handled with a 200 response, since there is a page to respond back with.
