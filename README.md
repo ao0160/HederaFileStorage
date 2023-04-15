@@ -7,3 +7,7 @@ account. I am unsure if this will implemented as the goal is to only utilize the
 Other factors involve the maintaince of the files, as Hedera Hashgraph does have a timeout period of files, they can be updated, but that requires additional transactions.
 
 ## To-Do
+- Update eSpirometer to push to HFS.
+- Make the API more robust.
+- Make add a 'USER-AGENT' so that embedded devices can switch off the verbosity and only receive what is needed from the system.
+- Add more frontend functionality.
