@@ -7,8 +7,14 @@ const {
   Hbar,
   TransferTransaction,
   FileCreateTransaction,
+  FileUpdateTransaction,
+  FileDeleteTransaction,
   FileContentsQuery,
-  FileId
+  FileAppendTransaction,
+  FileId,
+  Status,
+  Key,
+  KeyList
  } = require("@hashgraph/sdk");
 
 
@@ -101,27 +107,27 @@ app.post("/v1/node-address", function (req, res){
   req.body;
 
   ( async() => {
-    //Create the query
+    //Create the query, setup promise to output JSON.
     const fileQuery = new FileContentsQuery()
-        .setFileId( FileId.fromString("102"));
+        .setFileId( FileId.fromString("102") );
 
-    //Sign with the operator private key and submit to a Hedera network
-    const contents = await fileQuery.execute(client);
-
-    console.log("[LOG] " + contents.toString());
+    //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
+    await fileQuery.execute(client).then((contents)  => {
+      res.setHeader('Content-Type', 'application/json');
+      const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got Node Address file.", req.hostname + req.originalUrl, _, "file", contents.toString());
+      console.log("[LOG] Recieved data.");
+      res.send(response_json);  
+    })
+    .catch((error) => {
+      // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
+      res.setHeader('Content-Type', 'application/json');
+      const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get Node Address file.", req.hostname + req.originalUrl, _, _, _);
+      console.log("[LOG] Failed to received data.");
+      res.send(response_json);  
+    });
 
     //v2.0.7
   })();
-
-  res.setHeader('Content-Type', 'application/json');
-  res.json(helpers.success_message(
-    _,
-    _,
-    _,
-    _,
-    req.hostname + req.originalUrl,
-    'Successfully obtained node-address file.')
-  );
 });
 
 
@@ -130,87 +136,265 @@ app.post("/v1/node-address", function (req, res){
 //  - KEY: different than client operator.
 //  - Contents: The file contents.
 //  - MaxTransactionFee: This could be hardcoded in.
+
 // Good Example CURL:
-// curl -X POST -d filecontents="Hello there how are you today?" -d keys=10,11,12 http://localhost:9090/v1/file-create
-// curl -X POST -d filecontents="Hello there how are you today?" -d keys=302d300706052b8104000a0322000359d854a5321270d2269b5618086ffa8c3a778561f266f43980861655a961822b http://localhost:9090/v1/file-create
-// Bad Example CURL:
-// curl -X POST -d file-contents="Hello there how are you today?" -d keys=10,11,12 http://localhost:9090/v1/file-create
+// The private keys could technically be a list, but its important to note that the first private key will be used. This key should correspond with the first public key!
+// curl -X POST http://localhost:9090/v1/file-create -d filecontents="Hello there how are you today?" -d pubkey=<PUBKEY1>,<PUBKEY2>,..,<PUBKEYN> -d privkey=<PRIVKEY1> 
+
+// Another example, you can post JSON.
+// curl -X POST http://localhost:9090/v1/file-create -d filecontents={"id": 1234567890,"status": "Good","samples": [1,2,3]} -d pubkey=<PUBKEY1>,<PUBKEY2>,..,<PUBKEYN> -d privkey=<PRIVKEY1> 
 app.post("/v1/file-create", function ( req, res ){
   console.log("[LOG] POST /v1/file-create.");
-  req.body; // I am unsure why this is reiterated?
-  var key_array = []
+  var pub_keys = [];
+  var priv_keys = [];
 
-  if ( req.body.filecontents != null ){
-    // File Contents Variable is set.
+  // Verify all parameters.
+  if ( req.body.filecontents != null && req.body.pubkey != null && req.body.privkey != null ){
+    var split_pubkey = req.body.pubkey.split(',');
+    var split_privkey = req.body.privkey.split(',');
 
-    // Optional parameter of a key can be included. This should be a list.
-    if ( req.body.keys != null ){
-      key_array = req.body.keys.split(',');
+    // Grab public keys.
+    for( var i in split_pubkey){
+      pub_keys.push(PublicKey.fromString(split_pubkey[i]));
     }
-    else{
-      console.log("[LOG] No keys provided.");
+
+    // Grab private keys.
+    for( var i in split_privkey){
+      priv_keys.push(PrivateKey.fromString(split_privkey[i]));
     }
 
-    //Create the transaction with the provided keys. Wrapped in async.
-    ( async() => {
-      // Hardcoded account keys. 
-      var filePublicKey = PublicKey.fromString(USER_DER_PUB_KEY);
-      var fileKey = PrivateKey.fromString(USER_DER_PRV_KEY);
+    // Create a key list where all keys are required to sign.
+    const public_KeyList = new KeyList(pub_keys);
 
-      const transaction = await new FileCreateTransaction()
-          //.setKeys(key_array) // A different key then the client operator key.
-          .setKeys([filePublicKey])
-          .setContents(req.body.filecontents)
-          .setMaxTransactionFee(new Hbar(2))
-          .freezeWith(client);
+    // Create the transaction.
+    const transaction = new FileCreateTransaction()
+      .setKeys(public_KeyList)  // A different key then the client operator key. All public keys go here.
+      .setContents(req.body.filecontents)
+      .setMaxTransactionFee(new Hbar(2))
+      .freezeWith(client);
 
-      // Sign with the file private key
-      //const signTx =  transaction.sign(fileKey);
-      const signTx = await transaction.sign(fileKey);
+    try {
+      // Always sign with the first parameter (the primary private key).
+      transaction.sign(priv_keys[0])
+        .then((signTx) => {
+          signTx.execute(client)
+            .then((submitTx) => {
+              submitTx.getReceipt(client)
+                .then((receipt) => {
+                  // Get the file ID.
+                  const newFileId = receipt.fileId;
+                  console.log("[LOG] The new file ID is: " + newFileId);
 
-      //Sign with the client operator private key and submit to a Hedera network
-      const submitTx = await signTx.execute(client);
-
-      //Request the receipt
-      const receipt = await submitTx.getReceipt(client);
-
-      //Get the file ID
-      const newFileId = receipt.fileId;
-
-      console.log("[LOG] The new file ID is: " + newFileId);
-
+                  res.setHeader('Content-Type', 'application/json');
+                  const response_json = new helpers.api_json_reponse("Success", 200, "Successfully created file with id: " + newFileId + ".", req.hostname + req.originalUrl, _, "fileid", newFileId);
+                  res.send(response_json);
+                })
+                .catch((error) => {
+                  console.error("[ERROR] An error occurred while retrieving transaction receipt: " + error);
+                  res.setHeader('Content-Type', 'application/json');
+                  const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.hostname + req.originalUrl, _, _, _);
+                  res.send(response_json);
+                });
+            })
+            .catch((error) => {
+              console.error("[ERROR] An error occurred while executing transaction: " + error);
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.hostname + req.originalUrl, _, _, _);
+              res.send(response_json);
+            });
+        })
+        .catch((error) => {
+          console.error("[ERROR] An error occurred while signing transaction: " + error);
+          res.setHeader('Content-Type', 'application/json');
+          const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.hostname + req.originalUrl, _, _, _);
+          res.send(response_json);
+        });
       //v2.0.7
-    })();
+    } catch (err) {
+      console.log("[LOG] Error in POST /v1/file-create:", err);
+      res.setHeader('Content-Type', 'application/json');
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error creating file.", req.hostname + req.originalUrl, _, _, _);
+      res.send(response_json);
+    }
 
-    res.json(req.body);
-  }
+  } 
   else {
-    console.log("[WARN] No file contents provided.");
-    res.json(helpers.error_message(
-      _,
-      _,
-      'File create requires at minimum \'filecontents\' parameter to be set.'
-      ,_,
-      req.hostname + req.originalUrl,
-      "")
-    );
-
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'filecontents\', \'pubkey\', and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);
   }
 
 });
 
 // Post File Append.
+// File created to test appending: 4127209
+// curl -X post http://localhost:9090/v1/file-append -d filecontents="Hello, world! This was appended!" -d privkey=<YOUR-PRIV-KEY> -d fileid=<FILE-ID>
 app.post("/v1/file-append", function ( req, res ){
   console.log("[LOG] POST /v1/file-append.");
-  req.body;
-  res.json(req.body);
+
+  req.body; // I am unsure why this is reiterated?
+  var priv_keys = [];
+
+  // Verify all parameters.
+  if ( req.body.filecontents != null != null && req.body.privkey != null && req.body.fileid){
+    var split_privkey = req.body.privkey.split(',');
+
+    // Grab private keys.
+    for( var i in split_privkey){
+      priv_keys.push(PrivateKey.fromString(split_privkey[i]));
+    }
+
+    // Create the transaction.
+    const transaction = new FileAppendTransaction()
+      .setFileId( FileId.fromString(req.body.fileid) )
+      .setContents(req.body.filecontents)
+      .setMaxTransactionFee(new Hbar(2))
+      .freezeWith(client);
+
+    try {
+      // Always sign with the first parameter (the primary private key).
+      transaction.sign(priv_keys[0]).then( (signTx) => {
+        // Sign the transaction.
+        signTx.execute(client).then( (submitTx) =>{
+          // Execute the transaction.
+          submitTx.getReceipt(client).then( (receipt) => {
+            // Obtain the transaction's receipt.
+            const transactionStatus3  = receipt.status;
+            console.log("[LOG] The transaction consensus status " + transactionStatus3.toString());
+
+            if ( transactionStatus3.toString() == "SUCCESS"){
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully appended to file " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), "file", req.body.filecontents);
+              res.send(response_json);
+            }
+            else{
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to append file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              res.send(response_json);              
+            }
+          }).catch((error) => {
+            console.log("[ERROR] Error while getting transaction receipt:", error);
+            res.setHeader('Content-Type', 'application/json');
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.hostname + req.originalUrl, error.toString(), _, _);
+            res.send(response_json);
+          });
+        }).catch((error) => {
+          console.log("[ERROR] Error while executing signed transaction:", error);
+          res.setHeader('Content-Type', 'application/json');
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+          res.send(response_json);
+        });
+      }).catch((error) => {
+        console.log("[ERROR] Error while signing transaction:", error);
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+        res.send(response_json);
+      });
+
+      //v2.0.7
+    } catch (err) {
+      res.setHeader('Content-Type', 'application/json');
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.hostname + req.originalUrl, _, _, _);
+      res.send(response_json);
+    }
+
+  } 
+  else {
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires \'filecontents\', \'fileid\',  \'pubkey\', and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);
+  }
+
 });
 
 // Post File Update.
+// Simpler example:
+// curl -X POST http://localhost:9090/v1/file-update -d filecontents="Hello there, how are you today?" -d fileid=4078666  -d pubkey=<YOUR-PUB-KEY> -d privkey=<YOUR-PRIV-KEY>
 app.post("/v1/file-update", function ( req, res ){
   console.log("[LOG] POST /v1/file-update.");
-  req.body;
-  res.json(req.body);
+  var pub_keys = [];
+  var priv_keys = [];
+
+  // Verify all parameters.
+  if ( req.body.filecontents != null && req.body.pubkey != null && req.body.privkey != null && req.body.fileid){
+    var split_pubkey = req.body.pubkey.split(',');
+    var split_privkey = req.body.privkey.split(',');
+
+    // Grab public keys.
+    for( var i in split_pubkey){
+      pub_keys.push(PublicKey.fromString(split_pubkey[i]));
+    }
+
+    // Grab private keys.
+    for( var i in split_privkey){
+      priv_keys.push(PrivateKey.fromString(split_privkey[i]));
+    }
+
+    // Create a key list where all keys are required to sign.
+    const public_KeyList = new KeyList(pub_keys);
+
+    // Create the transaction.
+    const transaction = new FileUpdateTransaction()
+      .setKeys(public_KeyList)  // A different key then the client operator key. All public keys go here.
+      .setFileId(FileId.fromString(req.body.fileid) )
+      .setContents(req.body.filecontents)
+      .setMaxTransactionFee(new Hbar(2))
+      .freezeWith(client);
+
+    try {
+      // Always sign with the first parameter (the primary private key).
+      transaction.sign(priv_keys[0]).then( (signTx) => {
+        // Sign the transaction.
+        signTx.execute(client).then( (submitTx) =>{
+          // Execute the transaction.
+          submitTx.getReceipt(client).then( (receipt) => {
+            // Obtain the transaction's receipt.
+            const transactionStatus3  = receipt.status;
+            console.log("[LOG] The transaction consensus status " + transactionStatus3.toString());
+
+            if ( transactionStatus3.toString() == "SUCCESS"){
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated file " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), "file", req.body.filecontents);
+              res.send(response_json);
+            }
+            else{
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to update file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              res.send(response_json);              
+            }
+          }).catch((error) => {
+            console.log("[ERROR] Error while getting transaction receipt:", error);
+            res.setHeader('Content-Type', 'application/json');
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.hostname + req.originalUrl, error.toString(), _, _);
+            res.send(response_json);
+          });
+        }).catch((error) => {
+          console.log("[ERROR] Error while executing signed transaction:", error);
+          res.setHeader('Content-Type', 'application/json');
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+          res.send(response_json);
+        });
+      }).catch((error) => {
+        console.log("[ERROR] Error while signing transaction:", error);
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+        res.send(response_json);
+      });
+
+      //v2.0.7
+    } catch (err) {
+      res.setHeader('Content-Type', 'application/json');
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.hostname + req.originalUrl, _, _, _);
+      res.send(response_json);
+    }
+
+  } 
+  else {
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'filecontents\', \'fileid\', \'pubkey\', and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);
+  }
+
 });
 
 // Post File Info.
@@ -220,70 +404,136 @@ app.post("/v1/file-info", function ( req, res ){
   res.json(req.body);
 });
 
+
+
 // Post File Contents.
-// Created a file with ID: 0.0.4064129
-// Example curl:
-// curl -X POST -d fileid=4064129 http://localhost:9090/v1/file-contents
+// Created a file with ID: 0.0.4078666
+// Another file created recently: 0.0.4126769
+// Another file created for appending: 0.0.4127209
+
+// Example curl for the above file:
+// curl -X POST http://localhost:9090/v1/file-contents  -d fileid=4078666 
+
+// Same as checking node-address
+// curl -X POST http://localhost:9090/v1/file-contents  -d fileid=102
+
 app.post("/v1/file-contents", function ( req, res ){
   console.log("[LOG] POST /v1/file-contents.");
   req.body;
-  if ( req.body.fileid != null){
+
+  if ( req.body.fileid != null ){
     ( async() => {
-      //Create the query
+      //Create the query, setup promise to output JSON.
       const fileQuery = new FileContentsQuery()
-          .setFileId( FileId.fromString("4064129"));  // Hardcoded for now.
+          .setFileId( FileId.fromString(req.body.fileid));
 
-      //Sign with the operator private key and submit to a Hedera network
-      const contents = await fileQuery.execute(client);
-
-      // We are going to busy wait. Very bad, but at the moment I just need a working implementation.
-      while( contents == undefined );
-
-      console.log("[LOG] " + contents.toString());
-
-      res.setHeader('Content-Type', 'application/json');
-      res.json(helpers.success_message(_,
-        _,
-        'Successfully obtained file.',
-        _,
-        req.hostname + req.originalUrl,
-        contents.toString())
-      );
-
+      //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
+      await fileQuery.execute(client).then((contents)  => {
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, _, "file", contents.toString());
+        console.log("[LOG] Recieved data: " + contents.toString());
+        res.send(response_json);  
+      })
+      .catch((error) => {
+        // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.hostname + req.originalUrl, _, _, _);
+        console.log("[LOG] Failed to received data.");
+        res.send(response_json);
+      });
       //v2.0.7
     })();
   }
   else{
-    // Failed to provide file identifier.
-    res.json(helpers.error_message(_,
-      _,
-      'File contents requires \'fileid\' parameter to be set.',
-      _,
-      req.hostname + req.originalUrl,
-      "" )
-    );
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the fileid parameter.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);    
   }
 });
 
+
 // Post File Deletion.
+// Example CURL:
+// curl -X POST http://localhost:9090/v1/file-delete -d fileid=4078666 -d privkey=<PRIVKEY-FILE-WAS-SIGNED-WITH>
 app.post("/v1/file-delete", function ( req, res ){
   console.log("[WARN] POST /v1/file-delete.");
-  req.body;
-  res.json(req.body);
+  var priv_keys = [];
+
+  if ( req.body.fileid != null && req.body.privkey != null ){
+    console.log("[LOG] File ID is: " + FileId.fromString(req.body.fileid));   
+    var split_privkey = req.body.privkey.split(',');
+
+    // Grab private keys.
+    for( var i in split_privkey){
+      priv_keys.push(PrivateKey.fromString(split_privkey[i]));
+    }
+    // Create the transaction.
+    const transaction = new FileDeleteTransaction()
+      .setFileId(FileId.fromString(req.body.fileid) )
+      .setMaxTransactionFee(new Hbar(2))
+      .freezeWith(client);
+
+    try {
+      // Always sign with the first parameter (the primary private key).
+      transaction.sign(priv_keys[0]).then( (signTx) => {
+        // Sign the transaction.
+        signTx.execute(client).then( (submitTx) =>{
+          // Execute the transaction.
+          submitTx.getReceipt(client).then( (receipt) => {
+            // Obtain the transaction's receipt.
+            const transactionStatus3  = receipt.status;
+            console.log("[LOG] The transaction consensus status " + transactionStatus3.toString());
+
+            if ( transactionStatus3.toString() == "FILE_DELETED"){
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated file " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              res.send(response_json);
+            }
+            else{
+              res.setHeader('Content-Type', 'application/json');
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to update file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              res.send(response_json);              
+            }
+          }).catch((error) => {
+            console.log("[ERROR] Error while getting transaction receipt:", error);
+            res.setHeader('Content-Type', 'application/json');
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.hostname + req.originalUrl, error.toString(), _, _);
+            res.send(response_json);
+          });
+        }).catch((error) => {
+          console.log("[ERROR] Error while executing signed transaction:", error);
+          res.setHeader('Content-Type', 'application/json');
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+          res.send(response_json);
+        });
+      }).catch((error) => {
+        console.log("[ERROR] Error while signing transaction:", error);
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+        res.send(response_json);
+      });
+
+      //v2.0.7
+    } catch (err) {
+      res.setHeader('Content-Type', 'application/json');
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.hostname + req.originalUrl, _, _, _);
+      res.send(response_json);
+    }
+  }
+  else{
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'fileid\' and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);    
+  }
 });
+
 
 // MUST BE AT TAIL OF POST CASES.
 // Example cURL:
-// curl -X POST -d hello=world http://localhost:9090/v1/file-appendereare
+// curl -X POST http://localhost:9090/v1/*
+// If POST made it this far, it doesn't exist.
 app.post("/*", function (req, res){
   console.log("[LOG] POST /*.");
-  // Default error message.
-  res.json( helpers.error_message(_,
-    _,
-    _,
-    _,
-    req.hostname + req.originalUrl,
-    _ )
-    );
 
+  const response_json = new helpers.api_json_reponse("Error", 400, "Invalid API endpoint.", req.hostname + req.originalUrl, _, _, _);
+  res.json(response_json);
 });
