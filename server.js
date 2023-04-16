@@ -126,14 +126,14 @@ app.post("/v1/node-address", function (req, res){
     //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
     await fileQuery.execute(client).then((contents)  => {
       res.setHeader('Content-Type', 'application/json');
-      const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got Node Address file.", req.hostname + req.originalUrl, _, "file", contents.toString());
+      const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got Node Address file.", req.originalUrl, _, "file", contents.toString());
       console.log("[LOG] Recieved data.");
       res.send(response_json);  
     })
     .catch((error) => {
       // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
       res.setHeader('Content-Type', 'application/json');
-      const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get Node Address file.", req.hostname + req.originalUrl, _, _, _);
+      const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get Node Address file.", req.originalUrl, _, _, _);
       console.log("[LOG] Failed to received data.");
       res.send(response_json);  
     });
@@ -209,41 +209,41 @@ app.post("/v1/file-create", function ( req, res ){
                   console.log("[LOG] The new file ID is: " + newFileId);
 
                   res.setHeader('Content-Type', 'application/json');
-                  const response_json = new helpers.api_json_reponse("Success", 200, "Successfully created file with id: " + newFileId + ".", req.hostname + req.originalUrl, _, "fileid", newFileId);
+                  const response_json = new helpers.api_json_reponse("Success", 200, "Successfully created file with id: " + newFileId + ".", req.originalUrl, _, "fileid", newFileId);
                   res.send(response_json);
                 })
                 .catch((error) => {
                   console.error("[ERROR] An error occurred while retrieving transaction receipt: " + error);
                   res.setHeader('Content-Type', 'application/json');
-                  const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.hostname + req.originalUrl, _, _, _);
+                  const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.originalUrl, _, _, _);
                   res.send(response_json);
                 });
             })
             .catch((error) => {
               console.error("[ERROR] An error occurred while executing transaction: " + error);
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.hostname + req.originalUrl, _, _, _);
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.originalUrl, _, _, _);
               res.send(response_json);
             });
         })
         .catch((error) => {
           console.error("[ERROR] An error occurred while signing transaction: " + error);
           res.setHeader('Content-Type', 'application/json');
-          const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.hostname + req.originalUrl, _, _, _);
+          const response_json = new helpers.api_json_reponse("Error", 400, "Unable to create file.", req.originalUrl, _, _, _);
           res.send(response_json);
         });
       //v2.0.7
     } catch (err) {
       console.log("[LOG] Error in POST /v1/file-create:", err);
       res.setHeader('Content-Type', 'application/json');
-      const response_json = new helpers.api_json_reponse("Error", 500, "Error creating file.", req.hostname + req.originalUrl, _, _, _);
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error creating file.", req.originalUrl, _, _, _);
       res.send(response_json);
     }
 
   } 
   else {
     res.setHeader('Content-Type', 'application/json');
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'filecontents\', \'pubkey\', and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'filecontents\', \'pubkey\', and \'privkey\'.", req.originalUrl, _, _, _);
     res.send(response_json);
   }
 
@@ -287,44 +287,44 @@ app.post("/v1/file-append", function ( req, res ){
 
             if ( transactionStatus3.toString() == "SUCCESS"){
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully appended to file " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), "file", req.body.filecontents);
+              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully appended to file " + req.body.fileid + ".", req.originalUrl, transactionStatus3.toString(), "file", req.body.filecontents);
               res.send(response_json);
             }
             else{
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to append file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to append file with id: " + req.body.fileid + ".", req.originalUrl, transactionStatus3.toString(), _, _);
               res.send(response_json);              
             }
           }).catch((error) => {
             console.log("[ERROR] Error while getting transaction receipt:", error);
             res.setHeader('Content-Type', 'application/json');
-            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.hostname + req.originalUrl, error.toString(), _, _);
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.originalUrl, error.toString(), _, _);
             res.send(response_json);
           });
         }).catch((error) => {
           console.log("[ERROR] Error while executing signed transaction:", error);
           res.setHeader('Content-Type', 'application/json');
-          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.originalUrl, error.toString(), _, _);
           res.send(response_json);
         });
       }).catch((error) => {
         console.log("[ERROR] Error while signing transaction:", error);
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.originalUrl, error.toString(), _, _);
         res.send(response_json);
       });
 
       //v2.0.7
     } catch (err) {
       res.setHeader('Content-Type', 'application/json');
-      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.hostname + req.originalUrl, _, _, _);
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.originalUrl, _, _, _);
       res.send(response_json);
     }
 
   } 
   else {
     res.setHeader('Content-Type', 'application/json');
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires \'filecontents\', \'fileid\',  \'pubkey\', and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires \'filecontents\', \'fileid\',  \'pubkey\', and \'privkey\'.", req.originalUrl, _, _, _);
     res.send(response_json);
   }
 
@@ -377,44 +377,44 @@ app.post("/v1/file-update", function ( req, res ){
 
             if ( transactionStatus3.toString() == "SUCCESS"){
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated file " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), "file", req.body.filecontents);
+              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated file " + req.body.fileid + ".", req.originalUrl, transactionStatus3.toString(), "file", req.body.filecontents);
               res.send(response_json);
             }
             else{
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to update file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to update file with id: " + req.body.fileid + ".", req.originalUrl, transactionStatus3.toString(), _, _);
               res.send(response_json);              
             }
           }).catch((error) => {
             console.log("[ERROR] Error while getting transaction receipt:", error);
             res.setHeader('Content-Type', 'application/json');
-            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.hostname + req.originalUrl, error.toString(), _, _);
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.originalUrl, error.toString(), _, _);
             res.send(response_json);
           });
         }).catch((error) => {
           console.log("[ERROR] Error while executing signed transaction:", error);
           res.setHeader('Content-Type', 'application/json');
-          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.originalUrl, error.toString(), _, _);
           res.send(response_json);
         });
       }).catch((error) => {
         console.log("[ERROR] Error while signing transaction:", error);
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.originalUrl, error.toString(), _, _);
         res.send(response_json);
       });
 
       //v2.0.7
     } catch (err) {
       res.setHeader('Content-Type', 'application/json');
-      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.hostname + req.originalUrl, _, _, _);
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.originalUrl, _, _, _);
       res.send(response_json);
     }
 
   } 
   else {
     res.setHeader('Content-Type', 'application/json');
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'filecontents\', \'fileid\', \'pubkey\', and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'filecontents\', \'fileid\', \'pubkey\', and \'privkey\'.", req.originalUrl, _, _, _);
     res.send(response_json);
   }
 
@@ -443,7 +443,7 @@ app.post("/v1/file-info", function ( req, res ){
       .catch((error) => {
         // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.hostname + req.originalUrl, _, _, _);
+        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.originalUrl, _, _, _);
         console.log("[LOG] Failed to received data.");
         res.send(response_json);
       });
@@ -452,12 +452,10 @@ app.post("/v1/file-info", function ( req, res ){
   }
   else{
     res.setHeader('Content-Type', 'application/json');
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the fileid parameter.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the fileid parameter.", req.originalUrl, _, _, _);
     res.send(response_json);    
   }
 });
-
-
 
 
 // Post File Contents.
@@ -484,14 +482,14 @@ app.post("/v1/file-contents", function ( req, res ){
       //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
       await fileQuery.execute(client).then((contents)  => {
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, _, "file", contents.toString());
+        const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.originalUrl, _, "file", contents.toString());
         console.log("[LOG] Recieved data: " + contents.toString());
         res.send(response_json);  
       })
       .catch((error) => {
         // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.hostname + req.originalUrl, _, _, _);
+        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.originalUrl, _, _, _);
         console.log("[LOG] Failed to received data.");
         res.send(response_json);
       });
@@ -500,7 +498,7 @@ app.post("/v1/file-contents", function ( req, res ){
   }
   else{
     res.setHeader('Content-Type', 'application/json');
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the fileid parameter.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the fileid parameter.", req.originalUrl, _, _, _);
     res.send(response_json);    
   }
 });
@@ -540,42 +538,42 @@ app.post("/v1/file-delete", function ( req, res ){
 
             if ( transactionStatus3.toString() == "FILE_DELETED"){
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated file " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated file " + req.body.fileid + ".", req.originalUrl, transactionStatus3.toString(), _, _);
               res.send(response_json);
             }
             else{
               res.setHeader('Content-Type', 'application/json');
-              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to update file with id: " + req.body.fileid + ".", req.hostname + req.originalUrl, transactionStatus3.toString(), _, _);
+              const response_json = new helpers.api_json_reponse("Error", 400, "Unable to update file with id: " + req.body.fileid + ".", req.originalUrl, transactionStatus3.toString(), _, _);
               res.send(response_json);              
             }
           }).catch((error) => {
             console.log("[ERROR] Error while getting transaction receipt:", error);
             res.setHeader('Content-Type', 'application/json');
-            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.hostname + req.originalUrl, error.toString(), _, _);
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.originalUrl, error.toString(), _, _);
             res.send(response_json);
           });
         }).catch((error) => {
           console.log("[ERROR] Error while executing signed transaction:", error);
           res.setHeader('Content-Type', 'application/json');
-          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.originalUrl, error.toString(), _, _);
           res.send(response_json);
         });
       }).catch((error) => {
         console.log("[ERROR] Error while signing transaction:", error);
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.hostname + req.originalUrl, error.toString(), _, _);
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.originalUrl, error.toString(), _, _);
         res.send(response_json);
       });
 
       //v2.0.7
     } catch (err) {
       res.setHeader('Content-Type', 'application/json');
-      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.hostname + req.originalUrl, _, _, _);
+      const response_json = new helpers.api_json_reponse("Error", 500, "Error updating file.", req.originalUrl, _, _, _);
       res.send(response_json);
     }
   }
   else{
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'fileid\' and \'privkey\'.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires parameters \'fileid\' and \'privkey\'.", req.originalUrl, _, _, _);
     res.send(response_json);    
   }
 });
@@ -584,11 +582,16 @@ app.post("/v1/file-delete", function ( req, res ){
 // Account API endpoints
 //  Enough endpoints should be developed to allow for the automatic creation of an account for a device.
 //-------------------------------------------------------------------------------------------------------------
+
 // Post Get Account.
 // Example cURL:
 //curl -X POST http://localhost:9090/v1/get-account -d accountid=<AccountID>
+// The format of accountID can be either <shard>.<realm>.<accountnum>  or <accountNum>
 // The system returns a JSON object, members of use to the devices are:
-// "accountId" a string with 0.0.ID (at least till realms and shards are implemented).
+// "accountId" a string with <shard>.<realm>.<accountnum> (at least till realms and shards are implemented).
+// "key" a string of the public key of the account. 
+// "accountMemo" a memo string, one the extra accounts I utilize has "auto-created account".
+//    - I may provide a specific memo, perhaps to associate it with a specific device, maybe MAC ADDR, or a combination of MAC and something else? 
 app.post("/v1/get-account", function ( req, res ){
   console.log("[LOG] POST /v1/get-account.");
 
@@ -608,7 +611,7 @@ app.post("/v1/get-account", function ( req, res ){
       .catch((error) => {
         // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
         res.setHeader('Content-Type', 'application/json');
-        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific account.", req.hostname + req.originalUrl, _, _, _);
+        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific account.", req.originalUrl, _, _, _);
         console.log("[LOG] Failed to received data.");
         res.send(response_json);
       });
@@ -617,9 +620,73 @@ app.post("/v1/get-account", function ( req, res ){
   }
   else{
     res.setHeader('Content-Type', 'application/json');
-    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the accountid parameter.", req.hostname + req.originalUrl, _, _, _);
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the accountid parameter.", req.originalUrl, _, _, _);
     res.send(response_json);    
   }
+});
+
+
+// Post Get Account By Memo.
+// Example cURL:
+//curl -X POST http://localhost:9090/v1/get-account/memo -d accountid=<AccountId> -d memo=<Memo>
+// The format of accountID can be either <accountnum>, it should be a number as this is a number the search will start at. 
+// The system returns a JSON object, members of use to the devices are:
+// "accountId" a string with <shard>.<realm>.<accountnum> (at least till realms and shards are implemented).
+// "key" a string of the public key of the account. 
+// "accountMemo" a memo string, one the extra accounts I utilize has "auto-created account".
+//    - I may provide a specific memo, perhaps to associate it with a specific device, maybe MAC ADDR, or a combination of MAC and something else? 
+app.post("/v1/get-account/memo", function ( req, res ){
+  console.log("[LOG] POST /v1/get-account/memo.");
+  var response_json;
+  var accountFound = null; 
+  res.setHeader('Content-Type', 'application/json');
+
+  if ( req.body.accountid != null && req.body.memo != null){
+    var account_iterator = Number(req.body.accountid);
+
+    ( async() => {
+      // Create the query, setup promise to output JSON.
+      // I am only able to call be ID. Does that mean I must iterate through entries?
+      while ( !accountFound ){
+        const query = await new AccountInfoQuery()
+            .setAccountId(account_iterator.toString());
+
+        account_iterator = account_iterator + 1;
+
+        //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
+        await query.execute(client).then((contents)  => {
+            if ( contents.accountMemo == req.body.memo ){
+              accountFound = contents;
+            }
+        })
+        .catch((error) => {
+          // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
+          //res.setHeader('Content-Type', 'application/json');
+          response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific account.", req.originalUrl, _, _, _);
+          console.log("[LOG] Failed to receive data.");
+          //res.send(response_json);
+        });
+      }
+      //v2.0.7
+
+      if( accountFound != null ){
+        response_json = new helpers.api_json_reponse("Success", 200, "Successfully got account with memo: " + req.body.memo + ".", req.originalUrl, _, "account", accountFound);
+        console.log("[LOG] Recieved data: " + accountFound);
+        res.send(response_json);
+      }
+      else {
+        console.log("[LOG] Failed to receive data.");
+        res.send(response_json);
+      }
+
+    })();
+  }
+  else{
+    //res.setHeader('Content-Type', 'application/json');
+    response_json = new helpers.api_json_reponse("Error", 400, "API call requires the accountid parameter.", req.originalUrl, _, _, _);
+    //res.send(response_json);    
+  }
+
 });
 
 
@@ -633,6 +700,6 @@ app.post("/v1/get-account", function ( req, res ){
 app.post("/*", function (req, res){
   console.log("[LOG] POST /*.");
 
-  const response_json = new helpers.api_json_reponse("Error", 400, "Invalid API endpoint.", req.hostname + req.originalUrl, _, _, _);
+  const response_json = new helpers.api_json_reponse("Error", 400, "Invalid API endpoint.", req.originalUrl, _, _, _);
   res.json(response_json);
 });
