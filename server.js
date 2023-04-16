@@ -3,6 +3,7 @@ const {
   PrivateKey,
   PublicKey,
   AccountInfoQuery,
+  AccountUpdateTransaction,
   AccountCreateTransaction,
   AccountBalanceQuery,
   Hbar,
@@ -626,10 +627,83 @@ app.post("/v1/get-account", function ( req, res ){
 });
 
 
+
+// Post Set Account.
+// Example cURL:
+//curl -X POST http://localhost:9090/v1/set-account/memo -d accountid=<AccountID> -d privkey=<PrivateKeyForAccountID> -d memo=<MEMO>
+// The format of accountID can be either <shard>.<realm>.<accountnum>  or <accountNum>
+// Memo is simply a string to set the account Memo to.
+// This will primarily be used to set an existing account's memo to something for the ESP devices, but its logic should be reusable for a generic
+// method.
+
+// "accountMemo" a memo string, one the extra accounts I utilize has "auto-created account".
+//    - I may provide a specific memo, perhaps to associate it with a specific device, maybe MAC ADDR, or a combination of MAC and something else? 
+app.post("/v1/set-account/memo", function ( req, res ){
+  console.log("[LOG] POST /v1/set-account/memo.");
+  var priv_keys = [];
+
+  if ( req.body.accountid != null && req.body.memo != null  && req.body.privkey != null){
+    var split_privkey = req.body.privkey.split(',');
+
+    // Grab private keys.
+    for( var i in split_privkey){
+      priv_keys.push(PrivateKey.fromString(split_privkey[i]));
+    }
+
+    ( async() => {
+      // Set Transaction parameters, mainly accountid and memo.
+      const transaction  = new AccountUpdateTransaction()
+          .setAccountId(req.body.accountid)
+          .setAccountMemo(req.body.memo)
+          .freezeWith(client);
+
+      // Always sign with the first parameter (the primary private key).
+      transaction.sign(priv_keys[0]).then( (signTx) => {
+        // Sign the transaction.
+        signTx.execute(client).then( (submitTx) =>{
+          // Execute the transaction.
+          submitTx.getReceipt(client).then( (receipt) => {
+            // Obtain the transaction's receipt.
+            const transactionStatus3  = receipt.status;
+            console.log("[LOG] The transaction consensus status " + transactionStatus3.toString());
+            res.setHeader('Content-Type', 'application/json');
+            const response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated account with id: " + req.body.accountid + ".", req.originalUrl, transactionStatus3.toString(),"account", receipt);
+            res.send(response_json);
+
+          }).catch((error) => {
+            console.log("[ERROR] Error while getting transaction receipt:", error);
+            res.setHeader('Content-Type', 'application/json');
+            const response_json = new helpers.api_json_reponse("Error", 500, "Unable to get transaction receipt.", req.originalUrl, error.toString(), _, _);
+            res.send(response_json);
+          });
+        }).catch((error) => {
+          console.log("[ERROR] Error while executing signed transaction:", error);
+          res.setHeader('Content-Type', 'application/json');
+          const response_json = new helpers.api_json_reponse("Error", 500, "Unable to execute signed transaction.", req.originalUrl, error.toString(), _, _);
+          res.send(response_json);
+        });
+      }).catch((error) => {
+        console.log("[ERROR] Error while signing transaction:", error);
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 500, "Unable to sign transaction.", req.originalUrl, error.toString(), _, _);
+        res.send(response_json);
+      });
+    })();
+  }
+  else{
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires accountid, memo, and privkey parameters.", req.originalUrl, _, _, _);
+    res.send(response_json);    
+  }
+});
+
+
+
 // Post Get Account By Memo.
 // Example cURL:
 //curl -X POST http://localhost:9090/v1/get-account/memo -d accountid=<AccountId> -d memo=<Memo>
-// The format of accountID can be either <accountnum>, it should be a number as this is a number the search will start at. 
+// The format of accountID  is just <accountnum>, it should be a number as this is the index number the search will start at. 
+
 // The system returns a JSON object, members of use to the devices are:
 // "accountId" a string with <shard>.<realm>.<accountnum> (at least till realms and shards are implemented).
 // "key" a string of the public key of the account. 
@@ -638,16 +712,24 @@ app.post("/v1/get-account", function ( req, res ){
 app.post("/v1/get-account/memo", function ( req, res ){
   console.log("[LOG] POST /v1/get-account/memo.");
   var response_json;
-  var accountFound = null; 
+  var accountFound = null;
+  var end_search = false;
   res.setHeader('Content-Type', 'application/json');
 
   if ( req.body.accountid != null && req.body.memo != null){
     var account_iterator = Number(req.body.accountid);
+    var initial_count = account_iterator;
+
+    // Only printout for IoT devices.
+    if ( req.get('user-agent') == "IoT" ){
+      console.log("[LOG] User-Agent: " + req.get('user-agent'));
+      console.log("[LOG] Requesting Account: %d, with memo: %s.", req.body.accountid, req.body.memo);
+    }
 
     ( async() => {
       // Create the query, setup promise to output JSON.
       // I am only able to call be ID. Does that mean I must iterate through entries?
-      while ( !accountFound ){
+      while ( !accountFound && !end_search ){
         const query = await new AccountInfoQuery()
             .setAccountId(account_iterator.toString());
 
@@ -662,10 +744,15 @@ app.post("/v1/get-account/memo", function ( req, res ){
         .catch((error) => {
           // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
           //res.setHeader('Content-Type', 'application/json');
-          response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific account.", req.originalUrl, _, _, _);
+          response_json = new helpers.api_json_reponse("Error", 400, "Failed to get account with memo: " + req.body.memo + ".", req.originalUrl, _, _, _);
           console.log("[LOG] Failed to receive data.");
           //res.send(response_json);
         });
+
+        if ( account_iterator - initial_count >= 100 ){
+          end_search = true;
+        }
+
       }
       //v2.0.7
 
