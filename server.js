@@ -2,6 +2,7 @@ const {
   Client,
   PrivateKey,
   PublicKey,
+  AccountInfoQuery,
   AccountCreateTransaction,
   AccountBalanceQuery,
   Hbar,
@@ -12,6 +13,7 @@ const {
   FileContentsQuery,
   FileAppendTransaction,
   FileId,
+  FileInfoQuery,
   Status,
   Key,
   KeyList
@@ -57,6 +59,11 @@ app.set("view engine", "ejs");  // Set views engine to ejs
 app.listen(port,hostname);
 console.log("[LOG] Launched server on port %d.", port);
 
+
+//-------------------------------------------------------------------------------------------------------------
+// GET Requests
+//  Enough endpoints should be developed to allow for the proper creation, storage, updating, and deletion of files.
+//-------------------------------------------------------------------------------------------------------------
 // Views 
 // This can be easily accessed via the browser.
 // Useful error codes.
@@ -80,6 +87,11 @@ app.get("/*", function (req, res){
   //res.sendStatus(404);
 });
 
+
+//-------------------------------------------------------------------------------------------------------------
+// File API endpoints
+//  Enough endpoints should be developed to allow for the proper creation, storage, updating, and deletion of files.
+//-------------------------------------------------------------------------------------------------------------
 // POSTING METHODS
 // CORRECT example using cURL to post:
 // Important to note that there are no quotes around the data string.
@@ -150,6 +162,7 @@ app.post("/v1/file-create", function ( req, res ){
 
   // Verify all parameters.
   if ( req.body.filecontents != null && req.body.pubkey != null && req.body.privkey != null ){
+
     var split_pubkey = req.body.pubkey.split(',');
     var split_privkey = req.body.privkey.split(',');
 
@@ -166,13 +179,23 @@ app.post("/v1/file-create", function ( req, res ){
     // Create a key list where all keys are required to sign.
     const public_KeyList = new KeyList(pub_keys);
 
-    // Create the transaction.
-    const transaction = new FileCreateTransaction()
-      .setKeys(public_KeyList)  // A different key then the client operator key. All public keys go here.
-      .setContents(req.body.filecontents)
-      .setMaxTransactionFee(new Hbar(2))
-      .freezeWith(client);
-
+    if ( req.body.filememo != null ){
+       // Create the transaction.
+       const transaction = new FileCreateTransaction()
+       .setKeys(public_KeyList)  // A different key then the client operator key. All public keys go here.
+       .setFileMemo(req.body.filememo)
+       .setContents(req.body.filecontents)
+       .setMaxTransactionFee(new Hbar(2))
+       .freezeWith(client);     
+    }
+    else{
+      // Create the transaction.
+      const transaction = new FileCreateTransaction()
+        .setKeys(public_KeyList)  // A different key then the client operator key. All public keys go here.
+        .setContents(req.body.filecontents)
+        .setMaxTransactionFee(new Hbar(2))
+        .freezeWith(client);
+    }
     try {
       // Always sign with the first parameter (the primary private key).
       transaction.sign(priv_keys[0])
@@ -397,12 +420,43 @@ app.post("/v1/file-update", function ( req, res ){
 
 });
 
+
 // Post File Info.
+// Example cURL:
+//curl -X POST http://localhost:9090/v1/file-info -d fileid=4127209
 app.post("/v1/file-info", function ( req, res ){
   console.log("[LOG] POST /v1/file-info.");
-  req.body;
-  res.json(req.body);
+
+  if ( req.body.fileid != null ){
+    ( async() => {
+      //Create the query, setup promise to output JSON.
+      const fileQuery = new FileInfoQuery()
+          .setFileId( FileId.fromString(req.body.fileid));
+
+      //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
+      await fileQuery.execute(client).then((contents)  => {
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.originalUrl, _, "file", contents);
+        console.log("[LOG] Recieved data: " + contents);
+        res.send(response_json);  
+      })
+      .catch((error) => {
+        // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.hostname + req.originalUrl, _, _, _);
+        console.log("[LOG] Failed to received data.");
+        res.send(response_json);
+      });
+      //v2.0.7
+    })();
+  }
+  else{
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the fileid parameter.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);    
+  }
 });
+
 
 
 
@@ -526,7 +580,52 @@ app.post("/v1/file-delete", function ( req, res ){
   }
 });
 
+//-------------------------------------------------------------------------------------------------------------
+// Account API endpoints
+//  Enough endpoints should be developed to allow for the automatic creation of an account for a device.
+//-------------------------------------------------------------------------------------------------------------
+// Post Get Account.
+// Example cURL:
+//curl -X POST http://localhost:9090/v1/get-account -d accountid=<AccountID>
+// The system returns a JSON object, members of use to the devices are:
+// "accountId" a string with 0.0.ID (at least till realms and shards are implemented).
+app.post("/v1/get-account", function ( req, res ){
+  console.log("[LOG] POST /v1/get-account.");
 
+  if ( req.body.accountid != null ){
+    ( async() => {
+      //Create the query, setup promise to output JSON.
+      const query  = new AccountInfoQuery()
+          .setAccountId(req.body.accountid);
+
+      //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
+      await query .execute(client).then((contents)  => {
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got account with id: " + req.body.accountid + ".", req.originalUrl, _, "account", contents);
+        console.log("[LOG] Recieved data: " + contents);
+        res.send(response_json);  
+      })
+      .catch((error) => {
+        // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
+        res.setHeader('Content-Type', 'application/json');
+        const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific account.", req.hostname + req.originalUrl, _, _, _);
+        console.log("[LOG] Failed to received data.");
+        res.send(response_json);
+      });
+      //v2.0.7
+    })();
+  }
+  else{
+    res.setHeader('Content-Type', 'application/json');
+    const response_json = new helpers.api_json_reponse("Error", 400, "API call requires the accountid parameter.", req.hostname + req.originalUrl, _, _, _);
+    res.send(response_json);    
+  }
+});
+
+
+//-------------------------------------------------------------------------------------------------------------
+// Catch All
+//-------------------------------------------------------------------------------------------------------------
 // MUST BE AT TAIL OF POST CASES.
 // Example cURL:
 // curl -X POST http://localhost:9090/v1/*
