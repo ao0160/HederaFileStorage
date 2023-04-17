@@ -776,6 +776,73 @@ app.post("/v1/get-account/memo", function ( req, res ){
 
 });
 
+// Post Espirometer
+// Example cURL:
+// curl -X POST -A "IoT" http://localhost:9090/v1/espirometer -d fileid=<fileID> -d memo=<Memo> -d filecontents=<FileContents> -d pubkey=<PublicKey> -d privkey=<PrivateKey>
+
+// Required DATA:
+// fileid: The explicit ID.
+// pubkey: The public key of the account that generated the file (should just be one).
+// privkey: The private key of the account that generated the file.
+//  - At the moment these keys are statically defined on the EDGE device. Ideally an account will be created if one does not exist and the keys
+//  - would be shared with the device, and stored in the non-volatile memory of the device. Since there is still work being done on the edge device
+//  - this is being skipped for now.
+// filecontents: The contents to add to the file, the API endpoint should selectively create a new file or append to an old file.
+//  - Since the filecontents is the message from the edge device, and the edge device is providing the SHA-MAC-HASH in the JSON payload,
+//  - we could pull it from the payload OR we could just provide an optional parameter for the MEMO (I may just do this.).
+
+// Was using Memo, unecessary since MESSAGE PAYLOAD contains it as indentifier.
+// memo: The SHA-MAC-HASH of the device. This may or may not be implemented depending on what I decide to do.
+//  - If I create another parameter for the MEMO this is more data that has to be sent by the EDGE device, the JSON payload of the EDGE device should
+//  - already have the SHA-MAC-HASH as the eSpirometer uses this in its initialization. However, I could omit this in the DATA payload and only use it
+//  - for the MEMO parameter. In which case the data size remains the same. 
+app.post("/v1/send-espirometer-data", function ( req, res ){
+  var response_json;
+  var edge_data;
+
+  console.log("[LOG] POST /v1/send-espirometer-data.");
+  res.setHeader('Content-Type', 'application/json');
+
+  if ( req.get('user-agent') != "IoT" ){
+    response_json = new helpers.api_json_reponse("Error", 400, "Only specific user-agents can POST here.", req.originalUrl, _, _, _);
+    console.log("[LOG] POSTer failed precheck.");
+  }
+  else{
+    if ( req.body.fileid != null  && req.body.filecontents != null && req.body.pubkey != null && req.body.privkey != null ){
+
+      // Check if FILE exists
+      // If it does APPEND
+        // If not create or ERROR out? For now since I am premaking items it may just have to be that way for proof of concept.
+      // Backend
+      // When appending or creating, tack on a comma to end of data being sent. 
+      // I will append a singular comma to the tail of the string to create the 'inside' value of an array of JSON objects.
+      edge_data = req.body.filecontents + ",";
+      console.log("[LOG] File ID: " + req.body.fileid);
+      console.log("[LOG] Contents: " + edge_data);
+
+      app.connect("/v1/file-contents")
+
+      // Frontend obtaining the contents of the file some preprocesssing is needed:
+      // File contents obtained, will need to parse. 
+      // When parsing, obtain the string and remove the tail character (should be comma) and tack on [ ] brackets to the front and back respsectively.
+      // This is not ideal but provides the [ {JSON1}, {JSON2} ]. 
+      // Then any further front end rendering would be easy peasy. 
+
+
+      response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated espirometer data.", req.originalUrl, _, _, _);
+      console.log("[LOG] Successfully update espirometer data.");
+    }
+    else{
+      response_json = new helpers.api_json_reponse("Error", 400, "API call requires fileid, memo, filecontents, pubkey, and privkey parameters.", req.originalUrl, _, _, _);
+      console.log("[LOG] Failed parameter check.");
+    }
+  }
+
+res.send(response_json);
+
+
+});
+
 
 //-------------------------------------------------------------------------------------------------------------
 // Catch All
