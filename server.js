@@ -1,3 +1,8 @@
+//https://axios-http.com/docs/api_intro
+//https://axios-http.com/docs/post_example
+//https://docs.hedera.com/hedera/sdks-and-apis/sdks/file-storage/
+//https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Asynchronous/Promises
+
 const {
   Client,
   PrivateKey,
@@ -60,7 +65,7 @@ app.set("view engine", "ejs");  // Set views engine to ejs
 app.listen(port,hostname);
 console.log("[LOG] Launched server on port %d.", port);
 
-
+var axios = require("axios");
 //-------------------------------------------------------------------------------------------------------------
 // GET Requests
 //  Enough endpoints should be developed to allow for the proper creation, storage, updating, and deletion of files.
@@ -71,12 +76,59 @@ console.log("[LOG] Launched server on port %d.", port);
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/418
 app.get("/", function (req, res){
   console.log("[LOG] GET /.");
-  var listnames = ["This", "is", "a", "test", "of","dynamic","data."];
+  res.render("pages/index.ejs");
+});
 
-  res.render("pages/index.ejs", {
-    listnames: listnames
-  });
+app.get("/search", function (req, res){
+  console.log("[LOG] GET /search.");
+  var response_json;
+  var output = null;
+  var file_type = "";
 
+  if ( ( req.query.fileid != "" || req.query.fileid != null ) && req.query.fileid ){
+    console.log("[LOG] Search for " + req.query.fileid);
+
+    axios.post("http://localhost:9090/v1/file-contents", data = {fileid: req.query.fileid})
+    .then(function (response) {
+      internal_response_object = response.data;
+      //console.log("[LOG] " + JSON.stringify(internal_response_object));
+
+      if( internal_response_object.message_type.slice(0, ) == "Success" ){
+        console.log("[LOG] File found. Sending.");
+
+        // Check to see if there is a match for identifier in the text.
+        if ( internal_response_object.hedera_response.match(/{"identifier"/) && internal_response_object.hedera_response.match(/"timestamp"/) ){
+          console.log("[LOG] Contents: " + internal_response_object.hedera_response );
+          response_json = internal_response_object.hedera_response;
+          response_json = "[" + response_json.slice(0, -1) + "]";
+    
+          console.log("[LOG] Search: " + response_json);
+          output = JSON.parse(response_json);
+          file_type = "espirometer";
+        }
+        else { 
+          file_type = "generic";
+          output = internal_response_object.hedera_response;
+        }
+
+        res.render("pages/search.ejs", {
+          results: output,
+          file_type: file_type
+        });
+      }
+      else{
+        file_type = "none";
+        res.render("pages/search.ejs", {
+          results: output,
+          file_type: file_type
+        });
+        throw "Unable to find fileid or file is marked as deleted."; 
+      }
+    })
+    .catch(function (error) {
+        console.log("[LOG] " + error );
+    });
+  }
 });
 
 // Fall into 404.
@@ -438,7 +490,7 @@ app.post("/v1/file-info", function ( req, res ){
       await fileQuery.execute(client).then((contents)  => {
         res.setHeader('Content-Type', 'application/json');
         const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.originalUrl, _, "file", contents);
-        console.log("[LOG] Recieved data: " + contents);
+        //console.log("[LOG] Recieved data: " + contents);
         res.send(response_json);  
       })
       .catch((error) => {
@@ -484,7 +536,7 @@ app.post("/v1/file-contents", function ( req, res ){
       await fileQuery.execute(client).then((contents)  => {
         res.setHeader('Content-Type', 'application/json');
         const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.originalUrl, _, "file", contents.toString());
-        console.log("[LOG] Recieved data: " + contents.toString());
+        //console.log("[LOG] Recieved data: " + contents.toString());
         res.send(response_json);  
       })
       .catch((error) => {
@@ -606,7 +658,7 @@ app.post("/v1/get-account", function ( req, res ){
       await query .execute(client).then((contents)  => {
         res.setHeader('Content-Type', 'application/json');
         const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got account with id: " + req.body.accountid + ".", req.originalUrl, _, "account", contents);
-        console.log("[LOG] Recieved data: " + contents);
+        //console.log("[LOG] Recieved data: " + contents);
         res.send(response_json);  
       })
       .catch((error) => {
@@ -698,7 +750,6 @@ app.post("/v1/set-account/memo", function ( req, res ){
 });
 
 
-
 // Post Get Account By Memo.
 // Example cURL:
 //curl -X POST http://localhost:9090/v1/get-account/memo -d accountid=<AccountId> -d memo=<Memo>
@@ -778,7 +829,7 @@ app.post("/v1/get-account/memo", function ( req, res ){
 
 // Post Espirometer
 // Example cURL:
-// curl -X POST -A "IoT" http://localhost:9090/v1/espirometer -d fileid=<fileID> -d memo=<Memo> -d filecontents=<FileContents> -d pubkey=<PublicKey> -d privkey=<PrivateKey>
+// curl -X POST -A "IoT" http://localhost:9090/v1/send-espirometer-data -d fileid=<fileID> -d memo=<Memo> -d filecontents=<FileContents> -d pubkey=<PublicKey> -d privkey=<PrivateKey>
 
 // Required DATA:
 // fileid: The explicit ID.
@@ -809,7 +860,7 @@ app.post("/v1/send-espirometer-data", function ( req, res ){
   }
   else{
     if ( req.body.fileid != null  && req.body.filecontents != null && req.body.pubkey != null && req.body.privkey != null ){
-
+      var internal_response_object;
       // Check if FILE exists
       // If it does APPEND
         // If not create or ERROR out? For now since I am premaking items it may just have to be that way for proof of concept.
@@ -818,19 +869,69 @@ app.post("/v1/send-espirometer-data", function ( req, res ){
       // I will append a singular comma to the tail of the string to create the 'inside' value of an array of JSON objects.
       edge_data = req.body.filecontents + ",";
       console.log("[LOG] File ID: " + req.body.fileid);
-      console.log("[LOG] Contents: " + edge_data);
+      //console.log("[LOG] Contents: " + edge_data);
+      /*
+      this.hedera_status_response = hedera_status_response;
+      this.hedera_response_type = hedera_response_type;
+      this.hedera_response = hedera_response;
+      */
+      // Verify file exists.
+      axios.post("http://localhost:9090/v1/file-info", data = {fileid: req.body.fileid})
+      .then(function (response) {
+        internal_response_object = response.data;
+        //console.log("[LOG] " + JSON.stringify(internal_response_object));
 
-      app.connect("/v1/file-contents")
+        if( internal_response_object.message_type == "Success" && internal_response_object.hedera_response.isDeleted == false ){
+          console.log("[LOG] File found. Moving to append.");
 
-      // Frontend obtaining the contents of the file some preprocesssing is needed:
-      // File contents obtained, will need to parse. 
-      // When parsing, obtain the string and remove the tail character (should be comma) and tack on [ ] brackets to the front and back respsectively.
-      // This is not ideal but provides the [ {JSON1}, {JSON2} ]. 
-      // Then any further front end rendering would be easy peasy. 
+          // Now call the append method.
+          axios.post("http://localhost:9090/v1/file-append", data = {fileid: req.body.fileid, filecontents:edge_data, privkey:req.body.privkey})
+          .then(function (response) {
+            // Overwrite previous information in old response data.
+            internal_response_object = response.data;
+            if ( internal_response_object.message_type == "Success"){
+              // Finally check to see if file was actually appended, testing only printout on server side.
+              axios.post("http://localhost:9090/v1/file-contents", data = {fileid: req.body.fileid})
+              .then(function (response) {
+                internal_response_object = response.data;
+                response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated espirometer data.", req.originalUrl, _, _, _);
+                //console.log("[LOG] " + internal_response_object.hedera_response);
+              })
+              .catch(function (error) {
+                console.log("[ERROR] " + error);
+                response_json = new helpers.api_json_reponse("Error", 400, error, req.originalUrl, _, _, _);
+                console.log("[LOG] Failed to append data.");
+              });
+              // Frontend obtaining the contents of the file some preprocesssing is needed:
+              // File contents obtained, will need to parse. 
+              // When parsing, obtain the string and remove the tail character (should be comma) and tack on [ ] brackets to the front and back respsectively.
+              // This is not ideal but provides the [ {JSON1}, {JSON2} ]. 
+              // Then any further front end rendering would be easy peasy. 
+              response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated espirometer data.", req.originalUrl, _, _, _);
+              console.log("[LOG] Successfully updated espirometer data.");    
+            }
+            else{ 
+              throw internal_response_object.api_message;
+            }
 
+          })
+          .catch(function (error) {
+            console.log("[ERROR] " + error);
+            response_json = new helpers.api_json_reponse("Error", 400, error, req.originalUrl, _, _, _);
+            console.log("[LOG] Failed to append data.");
+          }); 
+          
+        }
+        else{
+          throw "Unable to find fileid or file is marked as deleted."; 
+        }
+      })
+      .catch(function (error) {
+        console.log("[ERROR] " + error);
+        response_json = new helpers.api_json_reponse("Error", 400, error, req.originalUrl, _, _, _);
+        console.log("[LOG] Failed parameter check.");
+      });
 
-      response_json = new helpers.api_json_reponse("Success", 200, "Successfully updated espirometer data.", req.originalUrl, _, _, _);
-      console.log("[LOG] Successfully update espirometer data.");
     }
     else{
       response_json = new helpers.api_json_reponse("Error", 400, "API call requires fileid, memo, filecontents, pubkey, and privkey parameters.", req.originalUrl, _, _, _);
@@ -838,10 +939,80 @@ app.post("/v1/send-espirometer-data", function ( req, res ){
     }
   }
 
+  
 res.send(response_json);
-
-
 });
+
+// Post Espirometer
+// Example cURL:
+// curl -X POST -A "IoT" http://localhost:9090/v1/get-espirometer-data -d fileid=<fileID> -d pubkey=<PublicKey> -d privkey=<PrivateKey>
+
+// Required DATA:
+// fileid: The explicit ID.
+// pubkey: The public key of the account that generated the file (should just be one).
+// privkey: The private key of the account that generated the file.
+//  - At the moment these keys are statically defined on the EDGE device. Ideally an account will be created if one does not exist and the keys
+//  - would be shared with the device, and stored in the non-volatile memory of the device. Since there is still work being done on the edge device
+//  - this is being skipped for now.
+
+// Was using Memo, unecessary since MESSAGE PAYLOAD contains it as indentifier.
+// memo: The SHA-MAC-HASH of the device. This may or may not be implemented depending on what I decide to do.
+//  - If I create another parameter for the MEMO this is more data that has to be sent by the EDGE device, the JSON payload of the EDGE device should
+//  - already have the SHA-MAC-HASH as the eSpirometer uses this in its initialization. However, I could omit this in the DATA payload and only use it
+//  - for the MEMO parameter. In which case the data size remains the same. 
+app.post("/v1/get-espirometer-data", function ( req, res ){
+  var response_json;
+  var edge_data;
+
+  console.log("[LOG] POST /v1/get-espirometer-data.");
+  res.setHeader('Content-Type', 'application/json');
+
+  if ( req.body.fileid != null){
+    var internal_response_object;
+    // Check if FILE exists
+    // If it does APPEND
+      // If not create or ERROR out? For now since I am premaking items it may just have to be that way for proof of concept.
+    // Backend
+    // When appending or creating, tack on a comma to end of data being sent. 
+    // I will append a singular comma to the tail of the string to create the 'inside' value of an array of JSON objects.
+    edge_data = req.body.filecontents + ",";
+    console.log("[LOG] File ID: " + req.body.fileid);
+    /*
+    this.hedera_status_response = hedera_status_response;
+    this.hedera_response_type = hedera_response_type;
+    this.hedera_response = hedera_response;
+    */
+    // Verify file exists.
+    axios.post("http://localhost:9090/v1/file-contents", data = {fileid: req.body.fileid})
+    .then(function (response) {
+      internal_response_object = response.data;
+      //console.log("[LOG] " + JSON.stringify(internal_response_object));
+
+      if( internal_response_object.message_type == "Success" ){
+        console.log("[LOG] File found. Sending.");
+        response_json = new helpers.api_json_reponse("Success", 200, "Retrieved file contents.", req.originalUrl, _, "file", internal_response_object);
+        res.send(response_json);
+      }
+      else{
+        throw "Unable to find fileid or file is marked as deleted."; 
+      }
+    })
+    .catch(function (error) {
+      console.log("[ERROR] " + error);
+      response_json = new helpers.api_json_reponse("Error", 400, error, req.originalUrl, _, _, _);
+      console.log("[LOG] Failed parameter check.");
+      res.send(response_json);
+
+    });
+  }
+  else{
+    response_json = new helpers.api_json_reponse("Error", 400, "API call requires fileid, memo, filecontents, pubkey, and privkey parameters.", req.originalUrl, _, _, _);
+    console.log("[LOG] Failed parameter check.");
+    res.send(response_json);
+  }
+});
+
+
 
 
 //-------------------------------------------------------------------------------------------------------------

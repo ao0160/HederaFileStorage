@@ -1,6 +1,6 @@
 <div class="p-5 bg-success text-white text-center">
-  <img src="images/hbar-logo.png" class="hbar-logo"/>
-  <h1>File Store</h1>
+  <img src="images/hbar-logo.png" class="hbar-logo rounded-circle shadow-lg"/>
+  <h1 class="display-4">File Store</h1>
 </div>
 
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
@@ -10,8 +10,12 @@
         <a class="nav-link active" href="/">Home</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link disabled" href="#">Search</a>
+        <a class="nav-link disabled" href="#"></a>
       </li>
     </ul>
+    <form class="d-flex" action="/search">
+      <input name="fileid" class="form-control me-2" type="text" placeholder="File Search">
+      <button class="btn btn-success" type="submit">Search</button>
+    </form>
   </div>
 </nav>

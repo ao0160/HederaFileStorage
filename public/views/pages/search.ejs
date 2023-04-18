@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include("../partials/_header.ejs") %>
+<body>
+
+<%- include("../partials/_navigation.ejs") %>
+
+<div class="container mt-5" style="min-height:50vh">
+  <div class="row">
+    <div class="col-sm-12">
+      <h2>Search Results</h2>
+        <% if ( file_type == "espirometer" ) { %>
+          <div id="search-results">
+            <% results.forEach( function(entry) { %>
+              <div class="shadow-sm bg-light p-3 mt-3 rounded-1 border text-break">
+                <h3>Entry for <%=  entry.timestamp %></h3>
+                <p>Identifier for entry is <%=  entry.identifier %> this should be consistent with other entries in the file.</p>
+                <h4>FVC</h4>
+                <p>
+                  <%=  entry.FVC %> L
+                </p>
+                <h4>FEV</h4>
+                <p>
+                  <%=  entry.FEV %> L
+                </p>
+                <h4>PEFR</h4>
+                <p>
+                  <%=  entry.PEFR %> L/min
+                </p>
+              </div>
+              <% }); %>
+
+        <% } else if ( file_type == "generic")  { %>
+          <div class="shadow-sm bg-light p-3 mt-3 rounded-1 border text-break">
+            <h3> File Found </h3>
+            <p>
+              <%= results %>
+            </p>
+          </div>
+        <% } else  { %>
+          <p> No results. </p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include("../partials/_footer.ejs") %>
+
+</body>
+</html>
