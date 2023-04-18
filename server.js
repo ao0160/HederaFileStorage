@@ -98,11 +98,11 @@ app.get("/search", function (req, res){
 
         // Check to see if there is a match for identifier in the text.
         if ( internal_response_object.hedera_response.match(/{"identifier"/) && internal_response_object.hedera_response.match(/"timestamp"/) ){
-          console.log("[LOG] Contents: " + internal_response_object.hedera_response );
+          //console.log("[LOG] Contents: " + internal_response_object.hedera_response );
           response_json = internal_response_object.hedera_response;
           response_json = "[" + response_json.slice(0, -1) + "]";
     
-          console.log("[LOG] Search: " + response_json);
+          //console.log("[LOG] Search: " + response_json);
           output = JSON.parse(response_json);
           file_type = "espirometer";
         }

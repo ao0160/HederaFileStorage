@@ -5,3 +5,8 @@ body {
 .hbar-logo {
     width: 5vw;
 }
+
+.chart-container {
+    width: 75%;
+    height: 100%;
+  }

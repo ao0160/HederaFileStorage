@@ -15,20 +15,63 @@
               <div class="shadow-sm bg-light p-3 mt-3 rounded-1 border text-break">
                 <h3>Entry for <%=  entry.timestamp %></h3>
                 <p>Identifier for entry is <%=  entry.identifier %> this should be consistent with other entries in the file.</p>
-                <h4>FVC</h4>
-                <p>
-                  <%=  entry.FVC %> L
-                </p>
-                <h4>FEV</h4>
-                <p>
-                  <%=  entry.FEV %> L
-                </p>
-                <h4>PEFR</h4>
-                <p>
-                  <%=  entry.PEFR %> L/min
-                </p>
+                <div class="row">
+                  <div class="col-sm-12 col-md-6">
+                    <h4>FVC</h4>
+                    <p>
+                      <%=  entry.FVC %> L
+                    </p>
+                    <h4>FEV</h4>
+                    <p>
+                      <%=  entry.FEV %> L
+                    </p>
+                    <h4>PEFR</h4>
+                    <p>
+                      <%=  entry.PEFR %> L/min
+                    </p>
+                </div>
+                <div class="col-sm-12  col-md-6">
+                  <div class="">
+                    <canvas id='<%= entry.timestamp.replace(/[\s:-]/g, "") %>'></canvas>
+                  </div>
+                </div>
+                <script>
+                  const ctx_<%= entry.timestamp.replace(/[\s:-]/g, "") %> = document.getElementById("<%= entry.timestamp.replace(/[\s:-]/g, "") %>").getContext('2d');
+                  const chart_<%= entry.timestamp.replace(/[\s:-]/g, "") %> = new Chart( ctx_<%= entry.timestamp.replace(/[\s:-]/g, "") %>, {
+                    type: 'line',
+                    data: {
+                      labels: [
+                        <% for( var i = 0; i < entry["energy-graph"].length; i++ ) { %>
+                         <% if ( i == entry["energy-graph"].length - 1 ) { %>
+                        <%= i / 4 %> <% } else { %><%= i / 4 %>, <% } %>
+                        <% }%>
+                      ],
+                      datasets: [{
+                        label: 'Energy Graph',
+                        backgroundColor: 'rgba(161, 198, 247, 1)',
+                        borderColor: 'rgb(47, 128, 237)',
+                        data: [
+                        <% for( var i = 0; i < entry["energy-graph"].length; i++ ) { %>
+                         <% if ( i == entry["energy-graph"].length - 1 ) { %>
+                        <%= entry["energy-graph"][i] %> <% } else { %><%= entry["energy-graph"][i] %>, <% } %>
+                        <% }%>
+                      ],
+                      }]
+                    },
+                    options: {
+                      scales: {
+                        yAxes: [{
+                          ticks: {
+                            beginAtZero: true,
+                          }
+                        }]
+                      }
+                    },
+                  });
+                </script>
+                </div>
               </div>
-              <% }); %>
+            <% }); %>
 
         <% } else if ( file_type == "generic")  { %>
           <div class="shadow-sm bg-light p-3 mt-3 rounded-1 border text-break">
