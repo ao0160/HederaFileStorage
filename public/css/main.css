@@ -1,10 +1,16 @@
 body {
     background-color:#e5e5e5;
+    font-family: 'Verdana', sans-serif;
 }
 
 .hbar-logo {
-    width: 5vw;
+    width: 10vh;
 }
+
+.built-on {
+    width: 15vh;
+}
+
 
 .chart-container {
     width: 75%;

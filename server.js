@@ -85,10 +85,13 @@ app.get("/search", function (req, res){
   var output = null;
   var file_type = "";
 
-  if ( ( req.query.fileid != "" || req.query.fileid != null ) && req.query.fileid ){
+  // Not pretty, but functional.
+  var file_number = Number.parseInt(""+req.query.fileid, 10);
+
+  if (  !Number.isNaN(file_number) && file_number >= 0 ){
     console.log("[LOG] Search for " + req.query.fileid);
 
-    axios.post("http://localhost:9090/v1/file-contents", data = {fileid: req.query.fileid})
+    axios.post("http://localhost:9090/v1/file-contents", data = {fileid: file_number})
     .then(function (response) {
       internal_response_object = response.data;
       //console.log("[LOG] " + JSON.stringify(internal_response_object));
@@ -105,30 +108,50 @@ app.get("/search", function (req, res){
           //console.log("[LOG] Search: " + response_json);
           output = JSON.parse(response_json);
           file_type = "espirometer";
+          console.log("[LOG] eSpirometer file found.");
+
+          res.render("pages/search.ejs", {
+            results: output,
+            file_type: file_type
+          });  
+
         }
         else { 
           file_type = "generic";
+          console.log("[LOG] Generic file found.");
           output = internal_response_object.hedera_response;
-        }
 
-        res.render("pages/search.ejs", {
-          results: output,
-          file_type: file_type
-        });
+          res.render("pages/search.ejs", {
+            results: output,
+            file_type: file_type
+          });  
+
+        }
       }
       else{
         file_type = "none";
+        output = null;
         res.render("pages/search.ejs", {
           results: output,
           file_type: file_type
-        });
-        throw "Unable to find fileid or file is marked as deleted."; 
+        });  
+
+        throw "Unable to find fileid or file is marked as deleted.";        
       }
     })
     .catch(function (error) {
         console.log("[LOG] " + error );
     });
   }
+  else {
+    file_type = "none";
+    output = null;
+    res.render("pages/search.ejs", {
+      results: output,
+      file_type: file_type
+    });  
+  }
+
 });
 
 // Fall into 404.
@@ -526,7 +549,8 @@ app.post("/v1/file-contents", function ( req, res ){
   console.log("[LOG] POST /v1/file-contents.");
   req.body;
 
-  if ( req.body.fileid != null ){
+  if ( req.body.fileid != null && req.body.fileid != ""){
+    res.setHeader('Content-Type', 'application/json');
     ( async() => {
       //Create the query, setup promise to output JSON.
       const fileQuery = new FileContentsQuery()
@@ -534,14 +558,12 @@ app.post("/v1/file-contents", function ( req, res ){
 
       //Sign with the operator private key and submit to a Hedera network to recieve the Node Address file. Figure out how to get transaction status to return as the hedera_status_response value.
       await fileQuery.execute(client).then((contents)  => {
-        res.setHeader('Content-Type', 'application/json');
         const response_json = new helpers.api_json_reponse("Success", 200, "Successfully got file with id: " + req.body.fileid + ".", req.originalUrl, _, "file", contents.toString());
         //console.log("[LOG] Recieved data: " + contents.toString());
         res.send(response_json);  
       })
       .catch((error) => {
         // Catch any errors related to transaction, figure out how to get transaction status to return as the hedera_status_response value.
-        res.setHeader('Content-Type', 'application/json');
         const response_json = new helpers.api_json_reponse("Error", 400, "Failed to get specific file.", req.originalUrl, _, _, _);
         console.log("[LOG] Failed to received data.");
         res.send(response_json);

@@ -1,21 +1,53 @@
-<div class="p-5 bg-success text-white text-center">
-  <img src="images/hbar-logo.png" class="hbar-logo rounded-circle shadow-lg"/>
+<div class="p-5 bg-success text-white text-center" name="Logo" aria-label="Page title and logo.">
+    <a href="/">
+      <img src="images/hbar-logo.png" class="hbar-logo rounded-circle shadow-lg"  aria-labl="The Hedera™ logo." name="HederaLogo" alt="Hedera™ logo."/>
+    </a>
+
   <h1 class="display-4">File Store</h1>
 </div>
 
-<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark" name="navigation" aria-label="Navigation bar.">
   <div class="container-fluid">
     <ul class="navbar-nav">
       <li class="nav-item">
         <a class="nav-link active" href="/">Home</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link disabled" href="#"></a>
+        <a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#notablefiles">Notable Files</a>
       </li>
     </ul>
-    <form class="d-flex" action="/search">
-      <input name="fileid" class="form-control me-2" type="text" placeholder="File Search">
-      <button class="btn btn-success" type="submit">Search</button>
+    <form class="" action="/search">
+      <div class="d-flex flex-row">
+        <div class="input-group ">
+          <span class="input-group-text bg-dark text-light" aria-label="Search input box." name="search">File Search</span>
+          <input name="fileid" class="form-control" arial-label="File search input." type="text" placeholder="Search for a file">
+          <button class="btn btn-success" type="submit" arial-label="File search submit button.">Search</button>
+        </div>
+      </div>
     </form>
   </div>
 </nav>
+
+
+ <!-- Offcanvas Sidebar -->
+ <div class="offcanvas offcanvas-end bg-dark text-light shadow-lg" id="notablefiles">
+  <div class="offcanvas-header">
+    <h2 class="offcanvas-title">Notable Files</h2>
+    <button type="button" aria-label="Close sidebar navigation menu." class="btn-close text-reset bg-light" data-bs-dismiss="offcanvas" data-bs-toggle="offcanvas" data-bs-target="#notablefiles"></button>
+  </div>
+  <hr>
+  
+  <div class="offcanvas-body">
+    <h3>Node Address File</h3>
+    <p>102</p>
+    <h3>Random File</h3>
+    <p>123</p>
+    <h3>Larger Random File</h3>
+    <p>111</p>
+    <h3>Hello</h3>
+    <p>4078666</p>
+    <h3>Sample eSpirometer</h3>
+    <p>4127209</p>
+  </div>
+</div>
+
